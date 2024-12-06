@@ -1,3 +1,6 @@
+import re
+
+
 class Vacancy:
     """ Класс для представления вакансии """
     __slots__ = ('id', 'name', 'area', 'employer', 'url', 'salary', 'description')
