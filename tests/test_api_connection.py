@@ -1,7 +1,14 @@
-def test_api_connection(vacancy_from_hh):
-    assert vacancy_from_hh.connect() == True
+from unittest.mock import MagicMock, patch
+
+from src.api_connection import FindVacancyFromHHApi
 
 
-def test_load_vacancies(vacancy_from_hh):
-    vacancy_from_hh.get_vacancies("developer")
-    assert len(vacancy_from_hh.vacancies) != 0
+@patch("requests.get")
+def test_get_vacancies(mock_get, get_vac_object_list):
+    mock_response = MagicMock()
+    mock_response.status_code = 200
+    mock_response.json.return_value = {"items": [{"id": 1, "name": "Python"}]}
+    mock_get.return_value = mock_response
+    vacancies = FindVacancyFromHHApi().get_vacancies("Python")
+    assert len(vacancies) == 20
+    assert vacancies[0]["name"] == "Python"

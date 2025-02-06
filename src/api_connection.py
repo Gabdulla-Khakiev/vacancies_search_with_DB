@@ -1,124 +1,110 @@
 from abc import ABC, abstractmethod
+
 import requests
 
 
-class HeadHunter(ABC):
+class ApiHH(ABC):
+
     @abstractmethod
     def __init__(self):
         pass
 
 
-class LoadVacancies(HeadHunter):
+class FindVacancyFromHHApi(ApiHH):
     """
-    Класс для получения вакансий с HH с помощью Api ключа
+    Класс для получения данных по вакансиям из API HeadHunter
     """
 
     def __init__(self):
-        self.url = 'https://api.hh.ru/vacancies'
-        self.headers = {'User-Agent': 'HH-User-Agent'}
-        self.params = {'text': '', 'area': 113, 'page': 0, 'per_page': 100}
-        self.vacancies = []
+        self.__url = "https://api.hh.ru/vacancies"
+        self.__headers = {"User-Agent": "HH-User-Agent"}
+        self.__params = {"text": "", "page": 0, "per_page": 100}
+        self.__vacancies = []
 
-    def connect(self):
-        """
-        Проверяет доступность API HeadHunter.
-
-        :return: True, если подключение успешно; False в противном случае.
-        """
+    def __get_vacancies(self, keyword: str):
+        """Приватный метод получения списка ваканский"""
+        self.__params["text"] = keyword
         try:
-            response = requests.get(self.url, headers=self.headers)
-            response.raise_for_status()  # Проверка на успешный ответ
-            return True  # Успешное подключение
-        except requests.exceptions.RequestException as e:
-            print(f"Ошибка при подключении к API: {e}")
+            while self.__params.get("page") != 20:
+                if (
+                    requests.get(
+                        self.__url, headers=self.__headers, params=self.__params
+                    ).status_code
+                    == 200
+                ):
+                    response = requests.get(
+                        self.__url, headers=self.__headers, params=self.__params
+                    )
+                    vacancies = response.json()["items"]
+                    self.__vacancies.extend(vacancies)
+                    self.__params["page"] += 1
+        except Exception as e:
+            print(f"Что-то не так с подключением, ошибка: {e}")
 
-            return False  # Ошибка подключения
-
-    def get_vacancies(self, keyword: str):
-        """
-        Загружает вакансии с сайта HeadHunter по ключевому слову.
-
-        :param keyword: Ключевое слово для поиска вакансий.
-        """
-        self.params['text'] = keyword
-
+    def __get_vacancies_by_employer_id(self, employer_id: str):
+        """Приватный метод для получения вакансий по идентификационному номеру работодателя"""
         try:
-            while self.params.get('page') < 20:
-                response = requests.get(self.url, headers=self.headers, params=self.params)
-                response.raise_for_status()  # Проверка на наличие ошибок
+            self.__params["employer_id"] = employer_id
+            while self.__params.get("page") != 10:
+                response = requests.get(
+                    self.__url, headers=self.__headers, params=self.__params
+                )
+                response_data = response.json()
 
-                vacancies = response.json().get('items')
-                if not vacancies:
-                    break
+                if "items" in response_data:
+                    vacancies = response_data["items"]
+                    self.__vacancies.extend(vacancies)
+                else:
+                    print(f"Нет вакансий для работодателя с ID: {employer_id}")
+                    break  # Выход из цикла, если нет вакансий
 
-                self.vacancies.extend(vacancies)
-                self.params['page'] += 1
+                self.__params["page"] += 1
+        except Exception as e:
+            print(f"Произошла ошибка: {e}")
 
-        except requests.RequestException as e:
-            print(f"Ошибка при запросе к API: {e}")
-            return []
+    def get_vacancies(self, keyword: str) -> list:
+        """Получаем список вакансий в формате json из одноименного приватного метода"""
+        self.__get_vacancies(keyword)
+        return self.__vacancies
 
-    def get_vacancies_by_employer_id(self, employer_id):
-        try:
-            self.params["employer_id"] = employer_id
-            while self.params.get('page') < 20:
-                response = requests.get(self.url, headers=self.headers, params=self.params)
-                response.raise_for_status()  # Проверка на наличие ошибок
-
-                vacancies = response.json().get('items')
-                if not vacancies:
-                    break
-
-                self.vacancies.extend(vacancies)
-                self.params['page'] += 1
-
-        except requests.RequestException as e:
-            print(f"Ошибка при запросе к API: {e}")
-            return []
+    def get_vacancies_by_employer_id(self, employer_id: str):
+        self.__get_vacancies_by_employer_id(employer_id)
+        return self.__vacancies
 
 
-class FindEmployerFromHH(HeadHunter):
+class FindEmployerFromHHApi(ApiHH):
     """
-    Класс для получения вакансий с HH с помощью Api ключа
+    Класс для получения данных по вакансиям из API HeadHunter
     """
+
     def __init__(self):
-        self.url = 'https://api.hh.ru/vacancies'
-        self.headers = {'User-Agent': 'HH-User-Agent'}
-        self.params = {'text': '', 'area': 113, 'page': 0, 'per_page': 100, 'sort_by': 'by_vacancies_open'}
-        self.employers = []
+        self.__url = "https://api.hh.ru/employers"
+        self.__headers = {"User-Agent": "HH-User-Agent"}
+        self.__params = {
+            "text": "",
+            "page": 0,
+            "per_page": 100,
+            "sort_by": "by_vacancies_open",
+        }
+        self.__employers = []
 
     def __get_employer_info(self, keyword=""):
-        """
-        Загружает инфо-ию по работодателям с сайта HeadHunter по ключевому слову.
-
-        :param keyword: Ключевое слово для поиска вакансий.
-        """
-
-        self.params['text'] = keyword
-
+        """Приватный метод получения информации из АПИ HH по работодателям"""
         try:
-            while self.params.get('page') < 20:
-                response = requests.get(self.url, headers=self.headers, params=self.params)
-                response.raise_for_status()  # Проверка на наличие ошибок
+            self.__params["text"] = keyword
+            while self.__params.get("page") != 20:
+                response = requests.get(
+                    self.__url, headers=self.__headers, params=self.__params
+                )
+                employers = response.json()
+                self.__employers.extend(employers["items"])
+                self.__params["page"] += 1
+        except Exception as e:
+            print(f"Что-то не так с подключением, ошибка: {e}")
 
-                employers = response.json().get('items')
-                if not employers:
-                    break
-
-                self.employers.extend(employers)
-                self.params['page'] += 1
-
-        except requests.RequestException as e:
-            print(f"Ошибка при запросе к API: {e}")
-            return []
-
-    def get_employer_info(self, employer_count, keyword=''):
+    def get_employer_info(self, employers_count, keyword=""):
         self.__get_employer_info(keyword)
-        for employer in self.employers[:employer_count]:
+        for employer in self.__employers[:employers_count]:
             print(f"{employer.get('name')}, id: {employer.get('id')}")
-        print('...')
-        return self.employers
-
-
-if __name__ == "__main__":
-    pass
+        print("...")
+        return self.__employers
