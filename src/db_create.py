@@ -31,6 +31,21 @@ class DBConnection:
         cur.close()
         conn.close()
 
+    def database_exists(self):
+        """Проверяет, существует ли база данных"""
+        try:
+            conn = psycopg2.connect(
+                host=self._host,
+                database=self._database,
+                user=self._username,
+                port=self._port,
+                password=self._password
+            )
+            conn.close()
+            return True
+        except psycopg2.OperationalError:
+            return False
+
     def create_db(self):
         """Метод для создания базы данных"""
         try:
